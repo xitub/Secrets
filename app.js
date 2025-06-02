@@ -4,11 +4,9 @@ import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
 import mongoose from 'mongoose';
-import encrypt from "mongoose-encryption";
+import md5 from "md5";
 
 const app = express();
-
-console.log(process.env.SECRET); //confirm it is working
 
 app.use(express.static("public"));
 app.set ('view engine', 'ejs');
@@ -20,9 +18,6 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String
 });
-
-const secret = process.env.SECRET;                                                           // level 3
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ["password"]});                // level 2
 
 const User = new mongoose.model("User", userSchema);
 
@@ -39,7 +34,7 @@ app.get("/register",(req, res)=>{
 app.post("/register",async(req, res)=>{
     const newUser = new User({
         email: req.body.username,
-        password: req.body.password
+        password: md5(req.body.password)
     });
 try {
     await newUser.save();
@@ -52,14 +47,13 @@ try {
 
 app.post("/login",async(req, res)=>{
     const username = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
     try{
         const foundUser = await User.findOne({email: username});
         
         if(!foundUser) return res.status(404).send("No User Found!");
         
         if(foundUser.password === password){                                       // level 1
-            console.log(password); //still password is accsessible 
             return res.render("secrets");
         }
         else{
