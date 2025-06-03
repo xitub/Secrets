@@ -63,18 +63,25 @@ passport.use(new GoogleStrategy({
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
   },
   function(accessToken, refreshToken, profile, cb) {
-    // console.log(profile);
+    console.log(profile);
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
       return cb(err, user);
     });
   }
 ));
 
-app.get("/",(req, res)=>{
-    res.render("home");
+app.get("/",async(req, res)=>{
+    const foundUsers = await User.find({"secret":{$ne:null}});
+    try{
+      if (!foundUsers) return res.status(404).send("No Secrets at the moment.");
+      res.render("home",{usersWithSecrets: foundUsers});
+    }catch(err){
+      console.log(err);
+    }
 });
 app.get("/auth/google",
-  passport.authenticate("google", { scope: ["profile"] }));
+  passport.authenticate("google", { scope: ["profile"] }
+));
 app.get("/auth/google/secrets", 
   passport.authenticate("google", { failureRedirect: '/login' }),
   function(req, res) {
@@ -88,12 +95,13 @@ app.get("/register",(req, res)=>{
     res.render("register");
 });
 
-app.get("/secrets",(req, res)=>{
-    if(req.isAuthenticated()){
-        res.render("secrets");
-    }
-    else{
-        res.redirect("/login");
+app.get("/secrets",async(req, res)=>{
+    const foundUsers = await User.find({"secret":{$ne:null}});
+    try{
+      if (!foundUsers) return res.status(404).send("No Secrets at the moment.");
+      res.render("secrets",{usersWithSecrets: foundUsers});
+    }catch(err){
+      console.log(err);
     }
 });
 app.get("/submit",(req, res)=>{
@@ -121,7 +129,7 @@ app.post("/submit",async(req, res)=>{
     }
 });
 app.post("/register",async(req, res)=>{
-    User.register({username: req.body.username}, req.body.password, function(err, user){
+    User.register({username: req.body.username}, req.body.password, (err, user)=>{
         try{
             passport.authenticate("local")(req, res, function(){
             res.redirect("/secrets");
